@@ -89,9 +89,9 @@ class BiLoRA(BaseLearner):
                     param.requires_grad_(True)
                 if "coef_v" + "." + str(self._network.module.numtask - 1) in name:
                     param.requires_grad_(True)           
-                if "lora_B_k" +"."+str(self._network.module.numtask - 1) in name:
+                if "lora_B_k" in name:
                     param.requires_grad_(True)
-                if "lora_B_v" +"."+str(self._network.module.numtask - 1) in name:
+                if "lora_B_v"in name:
                     param.requires_grad_(True)
             except:
                 if "classifier_pool" + "." + str(self._network.numtask - 1) in name:
@@ -100,10 +100,6 @@ class BiLoRA(BaseLearner):
                     param.requires_grad_(True)
                 if "coef_v" + "." + str(self._network.numtask - 1) in name:
                     param.requires_grad_(True)
-                if "lora_B_k" +"."+str(self._network.numtask - 1) in name:
-                    param.requires_grad_(True)
-                if "lora_B_v" +"."+str(self._network.numtask - 1) in name:
-                    param.requires_grad_(True) 
 
         # Double check
         enabled = set()

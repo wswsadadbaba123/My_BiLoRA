@@ -108,7 +108,8 @@ class ViT_lora_fft(VisionTransformer):
             embed_layer=embed_layer, norm_layer=norm_layer, act_layer=act_layer, block_fn=block_fn, n_tasks=n_tasks, rank=rank)
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]
         for i in range(6):
-            self.blocks[i] = Block(embed_dim,num_heads=num_heads,qkv_bias=qkv_bias,drop=drop_rate,attn_drop=attn_drop_rate,drop_path=drop_path_rate)
+            self.blocks[i] = Block(embed_dim,num_heads=num_heads,qkv_bias=qkv_bias,drop=drop_rate,attn_drop=attn_drop_rate,drop_path=drop_path_rate,
+                                   rank=64,n_tasks=1)
                                                         
 
 

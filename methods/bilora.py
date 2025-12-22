@@ -79,7 +79,6 @@ class BiLoRA(BaseLearner):
 
     def _train(self, train_loader, test_loader):
         self._network.to(self._device)
-        print(self._network)
         for name, param in self._network.named_parameters():
             param.requires_grad_(False)
             try:

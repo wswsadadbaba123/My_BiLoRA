@@ -99,6 +99,10 @@ class BiLoRA(BaseLearner):
                     param.requires_grad_(True)
                 if "coef_v" + "." + str(self._network.numtask - 1) in name:
                     param.requires_grad_(True)
+                if "lora_B_k" in name:
+                    param.requires_grad_(True)
+                if "lora_B_v"in name:
+                    param.requires_grad_(True)
 
         # Double check
         enabled = set()

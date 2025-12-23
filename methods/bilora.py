@@ -110,10 +110,35 @@ class BiLoRA(BaseLearner):
             if param.requires_grad:
                 enabled.add(name)
 
-        with torch.no_grad():
-            for i, (_, inputs, targets) in enumerate(train_loader):
-                inputs, targets = inputs.to(self._device), targets.to(self._device)
-                self._network(inputs, get_cur_feat=True)
+            with torch.no_grad():
+                total_cls_sum = 0.0        # 累积 CLS token 的和
+                total_tokens = 0            # 累积样本数量
+
+                for i, (_, inputs, targets) in enumerate(train_loader):
+                    inputs = inputs.to(self._device)
+                    B = inputs.shape[0]
+
+                    # Patch embedding + CLS token + position embedding
+                    x = self._network.patch_embed(inputs)
+                    cls_token = self._network.cls_token.expand(B, -1, -1)
+                    x = torch.cat((cls_token, x), dim=1)
+                    x = x + self._network.pos_embed
+                    x = self._network.pos_drop(x)
+
+                    # 前6个 block
+                    for blk in self._network.blocks[:6]:
+                        x = blk(x)
+
+                    cls_token_6 = x[:, 0, :]  # [B, hidden_dim]
+
+                    # 累加
+                    total_cls_sum += cls_token_6.sum(dim=0).cpu()  # [hidden_dim]
+                    total_tokens += B
+
+                # 对整个数据集求均值
+                self.global_cls_mean = total_cls_sum / total_tokens  # [hidden_dim]
+                print("Global CLS mean shape:", self.global_cls_mean.shape)
+
 
         print(f"Parameters to be updated: {enabled}")
         if len(self._multiple_gpus) > 1:
@@ -158,15 +183,8 @@ class BiLoRA(BaseLearner):
                 inputs = torch.index_select(inputs, 0, mask)
                 targets = torch.index_select(targets, 0, mask)-self._known_classes
 
-                logits = self._network(inputs)['logits']
-                loss = F.cross_entropy(logits, targets)
-
-                # 添加前 l 层 LoRA 块的 L2 norm 正则化，其中 l = self._cur_task
-                reg_loss = torch.zeros((), device=loss.device)
-                for name, param in self._network.named_parameters():
-                    if "lora_B_k" in name or "lora_B_v" in name:
-                        reg_loss += param.pow(2).mean()
-                loss += 0.00025 * reg_loss
+                logits ,cls_token= self._network(inputs)['logits','cls_block_6']
+                loss = F.cross_entropy(logits, targets)+0.2*(1-F.cosine_similarity(cls_token, self.global_cls_mean, dim=1).mean())
 
                 optimizer.zero_grad()
                 loss.backward()

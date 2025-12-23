@@ -123,10 +123,12 @@ class ViT_lora_fft(VisionTransformer):
         prompt_loss = torch.zeros((1,), requires_grad=True).to(x.device)
         for i, blk in enumerate(self.blocks):
             x = blk(x, task_id, register_blk==i, get_feat=get_feat, get_cur_feat=get_cur_feat)
+            if i==5:
+                cls_block_6=x[:,0,:]
 
         x = self.norm(x)
         
-        return x, prompt_loss
+        return x, prompt_loss,cls_block_6
 
 
 

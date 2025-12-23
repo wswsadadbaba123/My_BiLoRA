@@ -161,6 +161,13 @@ class BiLoRA(BaseLearner):
                 logits = self._network(inputs)['logits']
                 loss = F.cross_entropy(logits, targets)
 
+                # 添加前 l 层 LoRA 块的 L2 norm 正则化，其中 l = self._cur_task
+                reg_loss = torch.zeros((), device=loss.device)
+                for name, param in self._network.named_parameters():
+                    if "lora_B_k" in name or "lora_B_v" in name:
+                        reg_loss += param.pow(2).mean()
+                loss += 0.00025 * reg_loss
+
                 optimizer.zero_grad()
                 loss.backward()
 

@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import matplotlib.pyplot as plt
 from torch import optim
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
@@ -54,7 +55,7 @@ class BiLoRA(BaseLearner):
         self.all_keys = []
         self.feature_list = []
         self.project_type = []
-
+        self.total_grad_norm=[]
     def after_task(self):
     
         self._known_classes = self._total_classes
@@ -198,6 +199,13 @@ class BiLoRA(BaseLearner):
                 if self.debug and i > 10: break
 
             scheduler.step()
+            if epoch == self.run_epoch - 1:
+                current_grad_norm = 0.0
+                for param in self._network.parameters():
+                    if param.grad is not None:
+                        current_grad_norm += param.grad.norm().item() ** 2
+                current_grad_norm = current_grad_norm ** 0.5
+                self.total_grad_norm.append(current_grad_norm)
             train_acc = np.around(tensor2numpy(correct) * 100 / total, decimals=2)
 
             info = 'Task {}, Epoch {}/{} => Loss {:.3f}, Train_accy {:.2f}'.format(
@@ -205,6 +213,16 @@ class BiLoRA(BaseLearner):
             prog_bar.set_description(info)
 
         logging.info(info)
+
+        # Plot gradient norms over tasks
+        
+        plt.figure()
+        plt.plot(range(len(self.total_grad_norm)), self.total_grad_norm)
+        plt.title('Gradient Norms over Tasks')
+        plt.xlabel('Task')
+        plt.ylabel('Gradient Norm')
+        plt.savefig(f'gradient_norms_over_tasks_task_{self._cur_task}.png')
+        plt.close()
 
 
     def clustering(self, dataloader):
